@@ -1,0 +1,24 @@
+    s := Sphere{Vec3{1, 3, 0}, 1.5, color.RGBA{225, 225, 225, 255}}   //bottom
+    s2 := Sphere{Vec3{1, 1, 0}, 1.25, color.RGBA{255, 255, 255, 255}} //middle
+    s3 := Sphere{Vec3{1, -1, 0}, 1, color.RGBA{255, 255, 255, 255}}   //top
+    s4 := Sphere{Vec3{0, -1.1, -.3}, 0.1, color.RGBA{0, 0, 0, 255}}   //stage right eye
+    s5 := Sphere{Vec3{0, -1.1, .3}, 0.1, color.RGBA{0, 0, 0, 255}}    //stage right eye
+
+    s6 := Sphere{Vec3{-.2, 1, 0}, 0.1, color.RGBA{0, 0, 0, 255}}   //stage right eye
+    s7 := Sphere{Vec3{-0.25, 2, 0}, 0.1, color.RGBA{0, 0, 0, 255}} //stage left eye
+
+    p := yPlane{-7, color.RGBA{0, 0, 255, 255}}
+    p2 := yPlane{3, color.RGBA{255, 0, 0, 255}}
+    p3 := xPlane{7, color.RGBA{0, 255, 0, 255}}
+    p4 := zPlane{-7, color.RGBA{255, 0, 255, 255}}
+    p5 := zPlane{7, color.RGBA{0, 255, 255, 255}}
+
+
+
+    objects := []Shape{p, p2, p3, p4, p5, s2, s, s3, s4, s5, s6, s7}
+
+    l1 := Light{Vec3{-6, -6, 2}, 1}
+    lights := []Light{l1}
+
+    cam := Cam{Vec3{-10, 0, 0}, 0, 0}
+

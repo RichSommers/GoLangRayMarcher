@@ -84,12 +84,15 @@ func shadowColor(c color.RGBA, s float64) color.RGBA {
 	nc := color.RGBA{uint8(float64(c.R) * s), uint8(float64(c.G) * s), uint8(float64(c.B) * s), 255}
 	return nc
 }
-func combineColor(a color.RGBA,b color.RGBA) color.RGBA {
-	return color.RGBA{(a.R+b.R)/2, (a.G+b.G)/2, (a.B+b.B)/2, (a.A+b.A)/2}
+func combineColor(a color.RGBA, b color.RGBA) color.RGBA {
+	return color.RGBA{(a.R + b.R) / 2, (a.G + b.G) / 2, (a.B + b.B) / 2, (a.A + b.A) / 2}
 }
 
 func radians(d float64) float64 {
 	return d * (math.Pi / 180)
+}
+func degrees(r float64) float64 {
+	return r * (180 / math.Pi)
 }
 func min(v []float64) float64 {
 	min := v[0]
@@ -107,15 +110,16 @@ func genVec(ax float64, ay float64) Vec3 {
 	return Vec3{I * math.Cos(ax), math.Sin(ay), I * math.Sin(ax)}
 }
 
-func genAngles(a Vec3, b Vec3) Vec3 { //incorrectly mnamed but wjayever
+func genAngles(a Vec3, b Vec3) Vec3 { //incorrectly mnamed but wjayever   also this is wrong
 	t := Length(a, b)
-	ax := math.Atan2((b.x - a.x), (b.y - a.y))
+	ax := math.Atan2((b.z - a.z), (b.x - a.x)) //changed from .x
 	ay := math.Asin((b.y - a.y) / t)
+	//fmt.Println(a,":",b," angles", degrees(ax),":",degrees(ay))
 	return genVec(ax, ay)
 }
 
 func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
-	MINDIST := 0.001
+	MINDIST := 0.00000001
 	//0-1 0 or 1 for hard shadows do soft shad0ws soon
 	//get advance ray for each light source
 	//return min of all light sources (0 or 1 for hard shadows)
@@ -154,7 +158,15 @@ func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
 
 func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, lights []Light) [][]color.RGBA { //split by horizontal bars for less arguements      height start height stop
 	FOV := 90
-	MINDIST := 0.01
+	FOVF := float64(FOV)
+	FOVX, FOVY := 0.0, 0.0
+	if width > height {
+		FOVX, FOVY = FOVF, (float64(height)/float64(width))*FOVF
+	} else {
+		FOVY, FOVX = FOVF, (float64(width)/float64(height))*FOVF
+	}
+
+	MINDIST := 0.0001
 	MAXDIST := 20000.0
 	MAXSTEPS := 1000
 
@@ -166,11 +178,11 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 		imgSlice[r] = make([]color.RGBA, width)
 	}
 	for y := hS; y < hE; y++ {
-		ay := (float64(y) * (float64(FOV) / float64(height))) - (float64(FOV) / 2.0)
+		ay := (float64(y) * (float64(FOVY) / float64(height))) - (float64(FOVY) / 2.0)
 		ay += cam.ay
 		for x := 0; x < width; x++ {
 
-			ax := (float64(x) * (float64(FOV) / float64(width))) - (float64(FOV) / 2.0)
+			ax := (float64(x) * (float64(FOVX) / float64(width))) - (float64(FOVX) / 2.0)
 			ax += cam.ax
 			av := genVec(radians(ax), radians(ay))
 			ov := cam.pos //origin vector
@@ -191,9 +203,9 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 					imgSlice[y][x] = voidColor
 					break
 				} else if currentDist <= MINDIST { //stop advancing  use color   add shadows if necessary
-					sh := marchShadow(ov, objects, lights) //shadow amount
+					sh := marchShadow(ov, objects, lights)    //shadow amount
 					newColor := shadowColor(currentColor, sh) //make new with shadow
-					imgSlice[y][x] = newColor // set color
+					imgSlice[y][x] = newColor                 // set color
 					break
 				} else {
 					//continue advancing
@@ -207,11 +219,7 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 	return imgSlice
 }
 
-
-
-
-
- // for goroutines threading
+// for goroutines threading
 /*
 func join(s [][][]color.RGBA, units int,threads int, w int, h int) [][]color.RGBA { // list of 2d arrays    join them to 1 2d array for image
 	//create 2d image
