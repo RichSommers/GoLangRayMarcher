@@ -1,3 +1,5 @@
+// TODO ADD reading scene from file
+
 package main
 
 import "fmt"
@@ -7,20 +9,33 @@ import "image/color"
 import "os"
 
 func main() {
-WIDTH,HEIGHT:=400,400
+//	a:=color.RGBA{255,0,0,255}
+//	b:=0.5
+//	fmt.Println(shadowColor(a,b))
+//	return
+
+
+	WIDTH,HEIGHT:=400,400
+
 
 	fmt.Println("Starting...")
 
 
 
-	s := Sphere{Vec3{4, 0, 0}, 2, color.RGBA{125, 125, 125,255}}
-	p := yPlane{-2, color.RGBA{0, 0, 255,255}}
-	p2 := yPlane{2, color.RGBA{255, 0, 0,255}}
+	s := Sphere{Vec3{1, 2, 0}, 2, color.RGBA{225, 225, 225,255}} //middle
+
+	p := yPlane{-7, color.RGBA{0, 0, 255,255}}
+	p2 := yPlane{7, color.RGBA{255, 0, 0,255}}
+	p3 := xPlane{7,color.RGBA{0, 255, 0,255}}
+	p4 := zPlane{-7,color.RGBA{255,0,255,255}}
+	p5 := zPlane{7,color.RGBA{0,255,255,255}}
+	objects := []Shape{p,p2,p3,p4,p5,s}
 
 
-	objects := []Shape{p,p2,s}
+	l1:=Light{Vec3{-5,2,2},1}
+	lights:= []Light{l1}
 
-	cam:=Vec3{-10,0,0}
+	cam:=Cam{Vec3{-10,0,0},0,0}
 
 	//later sp;it for threads
 	threads:=4
@@ -48,7 +63,7 @@ WIDTH,HEIGHT:=400,400
 		final[r] = make([]color.RGBA, WIDTH)
 	}
 
-	final=raymarch(WIDTH,HEIGHT,0,HEIGHT, cam, objects)
+	final=raymarch(WIDTH,HEIGHT,0,HEIGHT, cam, objects,lights)
 
     simage := image.NewRGBA(image.Rect(0, 0, WIDTH, HEIGHT))
 
@@ -95,6 +110,6 @@ WIDTH,HEIGHT:=400,400
 	}}
 
 
-	f, _ := os.Create("image.png")
+	f, _ := os.Create("images/image.png")
 	png.Encode(f, simage)
 }
