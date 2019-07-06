@@ -1,0 +1,12 @@
+    s := Sphere{Vec3{1, 0, 0}, 2, color.RGBA{225, 225, 225, 255}}
+
+    p := yPlane{-7, color.RGBA{0, 0, 255, 255}}
+    p2 := yPlane{3, color.RGBA{255, 0, 0, 255}}
+    p3 := xPlane{7, color.RGBA{0, 255, 0, 255}}
+    p4 := zPlane{-7, color.RGBA{255, 0, 255, 255}}
+    p5 := zPlane{7, color.RGBA{0, 255, 255, 255}}
+
+
+
+    objects := []Shape{p, p2, p3, p4, p5, s}
+
