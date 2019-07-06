@@ -1,6 +1,6 @@
 package main
 
-//import "fmt"
+import "fmt"
 import "math"
 import "image/color"
 
@@ -85,6 +85,7 @@ func shadowColor(c color.RGBA, s float64) color.RGBA {
 	return nc
 }
 func combineColor(a color.RGBA, b color.RGBA) color.RGBA {
+	fmt.Println("to not uncomment fmt every time i need to dn")
 	return color.RGBA{(a.R + b.R) / 2, (a.G + b.G) / 2, (a.B + b.B) / 2, (a.A + b.A) / 2}
 }
 
@@ -126,6 +127,7 @@ func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
 	currentDist, _ := objects[0].DE(ov)
 
 	s := make([]float64, len(lights))
+
 	for i, l := range lights {
 		MAXDIST := Length(ov, l.pos)
 		fullDist := 0.0
@@ -153,11 +155,15 @@ func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
 
 		}
 	}
-	return min(s)
+	sum:=0.0
+	for _,f := range s{
+		sum+=f
+	}
+	return sum/float64(len(s))
 }
 
 func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, lights []Light) [][]color.RGBA { //split by horizontal bars for less arguements      height start height stop
-	FOV := 90
+	FOV := 120
 	FOVF := float64(FOV)
 	FOVX, FOVY := 0.0, 0.0
 	if width > height {
@@ -173,10 +179,11 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 	voidColor := color.RGBA{0, 0, 0, 0}
 
 	//create slice
-	imgSlice := make([][]color.RGBA, height)
+	imgSlice := make([][]color.RGBA, hE-hS)
 	for r := range imgSlice {
 		imgSlice[r] = make([]color.RGBA, width)
 	}
+	fmt.Println(hS,hE,"HsHe")
 	for y := hS; y < hE; y++ {
 		ay := (float64(y) * (float64(FOVY) / float64(height))) - (float64(FOVY) / 2.0)
 		ay += cam.ay
@@ -200,12 +207,12 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 				}
 
 				if fullDist > MAXDIST { //too far
-					imgSlice[y][x] = voidColor
+					imgSlice[y-hS][x] = voidColor
 					break
 				} else if currentDist <= MINDIST { //stop advancing  use color   add shadows if necessary
 					sh := marchShadow(ov, objects, lights)    //shadow amount
 					newColor := shadowColor(currentColor, sh) //make new with shadow
-					imgSlice[y][x] = newColor                 // set color
+					imgSlice[y-hS][x] = newColor                 // set color
 					break
 				} else {
 					//continue advancing
@@ -220,22 +227,22 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 }
 
 // for goroutines threading
-/*
-func join(s [][][]color.RGBA, units int,threads int, w int, h int) [][]color.RGBA { // list of 2d arrays    join them to 1 2d array for image
-	//create 2d image
-	img := make([][]color.RGBA, h)
-	for r := range img {
-		img[r] = make([]color.RGBA, w)
+
+func join(in [][][]color.RGBA ,w int, h int, units int) [][]color.RGBA {
+	out := make([][]color.RGBA, h)
+	for i := range out {
+    	out[i] = make([]color.RGBA, w)
+	}
+	fmt.Println(len(in),"*",len(in[0]),":",h)
+	for i,bar := range in{
+		fmt.Println("bar",bar[0][0])
+		for y,line := range bar{
+			//fmt.Println(y+(i*units))
+			out[y+(i*units)]=line
+
+
+		}
 	}
 
-	//dont use length of arrays because they are larger than needed change that in the future
-	for i:=0; i<threads; i++{
-		for y:=0; y<units; y++{
-		for x:=0; x<w; x++{
-			img[(i*units)+y][x]=s[i][y][x]
-		}
-		}
-	}
-	return img
+	return out
 }
-*/
