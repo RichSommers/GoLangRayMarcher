@@ -1,8 +1,12 @@
 // TODO ADD reading scene from file
-
+//using stopwatch
+//2000x2000 sphere example no goroutines ~1:04 with 2 threads 36.15 4 threads 34.85   8 threads ~34.84
+//using time ./program
+//4000x4000 same scene   2 threads     4 threads
 package main
 
 import "fmt"
+import "sync"
 import "image"
 import "image/png"
 import "image/color"
@@ -11,7 +15,7 @@ import "os"
 func main() {
 	frames:=1
 
-	WIDTH, HEIGHT := 400, 400
+	WIDTH, HEIGHT := 4000, 4000
 
 
 	fmt.Println("Starting...")
@@ -22,7 +26,7 @@ func main() {
 
 
 
-	threads := 4
+	threads := 2
 
 	fmt.Println("DONE=========================")
 
@@ -58,7 +62,7 @@ for i:=0;i<frames;i++{
 
 	objects := []Shape{p, p2, p3, p4, p5,p6, s,s1}
 
-//,ulti threading yeehaw
+	//,ulti threading yeehaw
 	output:=make([][][]color.RGBA,threads)
 	bar:=make([][]color.RGBA, units)
 	line:=make([]color.RGBA, WIDTH)
@@ -68,18 +72,27 @@ for i:=0;i<frames;i++{
 	for k:= range output{
 		output[k]=bar
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(threads) // we're going to wait for 1 person to finit
+
 	for i:=0; i<threads; i++{
 		start:=i*units
 		end:=start+units
 		fmt.Println(start,end)
-		output[i] = raymarch(WIDTH, HEIGHT, start, end, cam, objects, lights)
-	}
 
+		go func(num int,WIDTH int , HEIGHT int , start int, end int , cam Cam, objects []Shape, lights []Light) {
+			output[num] = raymarch(WIDTH, HEIGHT, start, end, cam, objects, lights)
+			wg.Done()//avoid race condition i think
+
+		}(i,WIDTH, HEIGHT, start, end, cam, objects, lights)
+	}
+	wg.Wait() //when done all is finished-
 	final:=join(output, WIDTH,HEIGHT,units)
 	simage := image.NewRGBA(image.Rect(0, 0, WIDTH, HEIGHT))
 
 	//use join to combine list of sectioons to
-	//or use img.set in all of them plus the offsett
+	//or use img.set in all of them plus the offsett    <---- This is prolly faster use code from join tho
 
 	//Writing to image
 	//join final from multithreading
