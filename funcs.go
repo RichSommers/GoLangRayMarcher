@@ -115,18 +115,17 @@ func genAngles(a Vec3, b Vec3) Vec3 { //incorrectly mnamed but wjayever   also t
 	t := Length(a, b)
 	ax := math.Atan2((b.z - a.z), (b.x - a.x)) //changed from .x
 	ay := math.Asin((b.y - a.y) / t)
-	//fmt.Println(a,":",b," angles", degrees(ax),":",degrees(ay))
 	return genVec(ax, ay)
 }
 
 func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
-	k:=16 //smoth shadows    higher is harder lower is sofgter shadow
+	k := 16 //smoth shadows    higher is harder lower is sofgter shadow
 	MINDIST := 0.000000001
 	//0-1 0 or 1 for hard shadows do soft shad0ws soon
 	//get advance ray for each light source
 	//return min of all light sources (0 or 1 for hard shadows)
 	currentDist, _ := objects[0].DE(ov)
-	res:=1.0
+	res := 1.0
 	s := make([]float64, len(lights))
 
 	for i, l := range lights {
@@ -136,7 +135,7 @@ func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
 		for {
 
 			if currentDist <= MINDIST { //hitting an object
-				s[i] =0 //shadowed
+				s[i] = 0 //shadowed
 				break
 			} else if fullDist >= MAXDIST {
 				s[i] = res //not blocked
@@ -148,7 +147,7 @@ func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
 					if currentDist > tmpDist { //new dist is shorter
 						currentDist, _ = o.DE(ov)
 					}
-				res=min(((float64(k)*currentDist/fullDist)),res)
+					res = min((float64(k) * currentDist / fullDist), res)
 				}
 				fullDist += currentDist
 				ov = aV(ov, mV(av, currentDist))
@@ -156,15 +155,14 @@ func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
 			}
 		}
 	}
-	sum:=0.0
-	for _,f := range s{
-		sum+=f
+	sum := 0.0
+	for _, f := range s {
+		sum += f
 	}
-	return sum/float64(len(s))
+	return sum / float64(len(s))
 }
 
-func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, lights []Light) [][]color.RGBA { //split by horizontal bars for less arguements      height start height stop
-	FOV := 360
+func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, lights []Light, FOV int) [][]color.RGBA { //split by horizontal bars for less arguements      height start height stop
 	FOVF := float64(FOV)
 	FOVX, FOVY := 0.0, 0.0
 	if width > height {
@@ -184,7 +182,6 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 	for r := range imgSlice {
 		imgSlice[r] = make([]color.RGBA, width)
 	}
-	fmt.Println(hS,hE,"HsHe")
 	for y := hS; y < hE; y++ {
 		ay := (float64(y) * (float64(FOVY) / float64(height))) - (float64(FOVY) / 2.0)
 		ay += cam.ay
@@ -197,8 +194,6 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 			fullDist := 0.0
 			for i := 0; i < MAXSTEPS; i++ {
 				currentDist, currentColor := objects[0].DE(ov) //remember add , color in des
-				//fmt.Println(ov)
-				//fmt.Println(av)
 
 				for _, o := range objects {
 					tmpDist, _ := o.DE(ov)
@@ -211,9 +206,9 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 					imgSlice[y-hS][x] = voidColor
 					break
 				} else if currentDist <= MINDIST { //stop advancing  use color   add shadows if necessary
-					sh :=(marchShadow(ov, objects, lights)/2)+0.5    //shadow amount
-					newColor := shadowColor(currentColor, sh) //make new with shadow
-					imgSlice[y-hS][x] = newColor                 // set color
+					sh := (marchShadow(ov, objects, lights) / 2) + 0.5 //shadow amount
+					newColor := shadowColor(currentColor, sh)          //make new with shadow
+					imgSlice[y-hS][x] = newColor                       // set color
 					break
 				} else {
 					//continue advancing
@@ -229,18 +224,14 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 
 // for goroutines threading
 
-func join(in [][][]color.RGBA ,w int, h int, units int) [][]color.RGBA {
+func join(in [][][]color.RGBA, w int, h int, units int) [][]color.RGBA {
 	out := make([][]color.RGBA, h)
 	for i := range out {
-    	out[i] = make([]color.RGBA, w)
+		out[i] = make([]color.RGBA, w)
 	}
-	fmt.Println(len(in),"*",len(in[0]),":",h)
-	for i,bar := range in{
-		fmt.Println("bar",bar[0][0])
-		for y,line := range bar{
-			//fmt.Println(y+(i*units))
-			out[y+(i*units)]=line
-
+	for i, bar := range in {
+		for y, line := range bar {
+			out[y+(i*units)] = line
 
 		}
 	}
