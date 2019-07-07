@@ -162,7 +162,7 @@ func marchShadow(ov Vec3, objects []Shape, lights []Light) float64 {
 	return sum / float64(len(s))
 }
 
-func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, lights []Light, FOV int) [][]color.RGBA { //split by horizontal bars for less arguements      height start height stop
+func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, lights []Light, FOV int, threadNum int) [][]color.RGBA { //split by horizontal bars for less arguements      height start height stop
 	FOVF := float64(FOV)
 	FOVX, FOVY := 0.0, 0.0
 	if width > height {
@@ -170,7 +170,6 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 	} else {
 		FOVY, FOVX = FOVF, (float64(width)/float64(height))*FOVF
 	}
-
 	MINDIST := 0.0001
 	MAXDIST := 20000.0
 	MAXSTEPS := 1000
@@ -187,7 +186,7 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 		ay += cam.ay
 		for x := 0; x < width; x++ {
 
-			ax := (float64(x) * (float64(FOVX) / float64(width))) - (float64(FOVX) / 2.0)
+			ax :=(float64(x) * (float64(FOVX) / float64(width))) - (float64(FOVX) / 2.0)
 			ax += cam.ax
 			av := genVec(radians(ax), radians(ay))
 			ov := cam.pos //origin vector
@@ -218,12 +217,15 @@ func raymarch(width int, height int, hS int, hE int, cam Cam, objects []Shape, l
 			}
 
 		}
+	if y%(height/10)==0{
+		fmt.Println("Thread",threadNum, ": at",(float64(y)/float64(height))*100.0,"%")
+	}
 	}
 	return imgSlice
 }
 
 // for goroutines threading
-
+//use this with image.set instead of here to array
 func join(in [][][]color.RGBA, w int, h int, units int) [][]color.RGBA {
 	out := make([][]color.RGBA, h)
 	for i := range out {

@@ -11,18 +11,20 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io/ioutil"
+	"log"
 	"os"
-	"strconv" //for sys.args
+	"strconv" //for sys.args  and file
+//	"strings"
 	"sync"
 )
 
 func main() {
-	if len(os.Args)==2{
-		fmt.Println("raymarch width, height, FOV, # of threads")
-	}
 
-	if len(os.Args) != 6 {
+	if len(os.Args) != 7 {
+
 		fmt.Println("Incorrect Arguments")
+		fmt.Println("raymarch width, height, FOV, # of threads")
 		os.Exit(1)
 	}
 	args := os.Args[1:] //without program
@@ -30,37 +32,43 @@ func main() {
 	HEIGHT, _ := strconv.Atoi(args[1])
 	FOV, _ := strconv.Atoi(args[2])
 	threads, _ := strconv.Atoi(args[3])
-	filePath := args[4]
-	frames := 1 //add this when including reading scene from file
+	outFilePath := args[4]
+	inFilePath := args[5]
+
 
 	fmt.Println("Starting...")
 
-	cam := Cam{Vec3{-10, 0, 0}, 0, 0}
+	//get file pass to process()
+	//split by "FRAME"[1:]
+	//[][]arrayof all (cam,objects,lights) of length array split by frame
+	//then splitlines  then first line.Fields Atoi == numObjects,numLights
+	//this frame of bigger array = make([]Shapes,numObjects)
+
+	file, err := os.Open(inFilePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	fil, err := ioutil.ReadAll(file)
+
+	allObjects, allLights, allCams,frames := process(string(fil))
+
+
+
 
 	units := HEIGHT / threads
-
 	final := make([][]color.RGBA, HEIGHT)
 	for r := range final {
 		final[r] = make([]color.RGBA, WIDTH)
 	}
 	for i := 0; i < frames; i++ {
 
-		p := yPlane{-10, color.RGBA{123, 186, 245, 255}}
-		p2 := yPlane{10, color.RGBA{220, 88, 21, 255}}
-		p3 := xPlane{7, color.RGBA{123, 186, 245, 255}}
-		//p4 := zPlane{-10, color.RGBA{123, 186,245, 255}}
-		//p5 := zPlane{10, color.RGBA{123, 186, 245, 255}}
+		objects := allObjects[i]
+		lights := allLights[i]
+		cam:=allCams[i]
 
-		s := Sphere{Vec3{6, -5, 0}, 0.5, color.RGBA{255, 255, 255, 255}}
-		s1 := Sphere{Vec3{6, -4.7, 0.4}, 0.3, color.RGBA{255, 255, 255, 255}}
-		s2 := Sphere{Vec3{6, -4.7, -0.4}, 0.3, color.RGBA{255, 255, 255, 255}}
-
-		l1 := Light{Vec3{-6, -6, 4}, 1}
-		lights := []Light{l1} //for multiple lights combine em
-
-		objects := []Shape{p, p2, p3, s, s1, s2}
-
-		//,ulti threading yeehaw
+		//multi threading yeehaw
 		output := make([][][]color.RGBA, threads)
 		bar := make([][]color.RGBA, units)
 		line := make([]color.RGBA, WIDTH)
@@ -78,29 +86,33 @@ func main() {
 			start := i * units
 			end := start + units
 
-			go func(num int, WIDTH int, HEIGHT int, start int, end int, cam Cam, objects []Shape, lights []Light, FOV int) {
-				output[num] = raymarch(WIDTH, HEIGHT, start, end, cam, objects, lights, FOV)
+			go func(num int, WIDTH int, HEIGHT int, start int, end int, cam Cam, objects []Shape, lights []Light, FOV int, threadNum int) {
+				output[num] = raymarch(WIDTH, HEIGHT, start, end, cam, objects, lights, FOV, threadNum)
 				wg.Done() //avoid race condition i think
 
-			}(i, WIDTH, HEIGHT, start, end, cam, objects, lights, FOV)
+			}(i, WIDTH, HEIGHT, start, end, cam, objects, lights, FOV, i)
 		}
 		wg.Wait() //when done all is finished-
-		final := join(output, WIDTH, HEIGHT, units)
+
 		simage := image.NewRGBA(image.Rect(0, 0, WIDTH, HEIGHT))
 
-		//use join to combine list of sectioons to
-		//or use img.set in all of them plus the offsett    <---- This is prolly faster use code from join tho
-
-		//Writing to image
 		//join final from multithreading
 
-		for y := 0; y < HEIGHT; y++ {
-			for x := 0; x < WIDTH; x++ {
-				simage.Set(x, y, final[y][x])
+		for i, bar := range output {
+			for y, line := range bar {
+				ypos := y + (i * units)
+				for x, col := range line {
+					simage.Set(x, ypos, col)
+				}
 			}
 		}
 
-		f, _ := os.Create(filePath)
+		if frames>1 {
+			inFilePath=fmt.Sprintf("%s%d%s",outFilePath,i,".png")
+		}
+
+
+		f, _ := os.Create(inFilePath)
 		png.Encode(f, simage)
 		fmt.Println("Finished Frame ", i)
 	}

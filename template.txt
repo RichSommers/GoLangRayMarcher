@@ -1,0 +1,43 @@
+#This is a thing describing the syntax of a file for the renderer
+
+#any line with a # first is a commment and will not be counted
+
+#do not use all uppercase F R M E because it messes it up specifies f rames
+#must redifine everything even if it doesnt move
+
+
+#F R A M E # of objects # of lights
+FRAME 2 1
+
+#sphere pos r color   any other things later
+# sphere at (0,0,0) radius 2 color (255,0,0)
+sphere 5 0 0 2 255 0 0
+sphere 5 0 0 2 255 0 0
+
+
+#axis aligned plane
+#plane type pos color
+#plane with a space on x axis at 12 with color (0,0,255)
+#plane x 12 0 0 255
+
+
+#light pos 
+#light at (3,3,3) bright 1
+light 3 3 3 1
+
+#cam pos ax ay    angles in degrees
+#cam at (-2,0,0) with direction (45,45)
+cam -2 0 0 0 0
+
+
+
+FRAME 2 1
+sphere 5 0 0 2 255 0 0
+sphere 5 0 0 2 255 0 0
+#plane x 12 0 0 255
+light 3 3 3 1
+cam -2 0 0 0 0
+
+#run with  go run . 320 160 90 4 images/image.png demos/snowman.txt 
+
+#add frame usage in process
