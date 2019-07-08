@@ -107,14 +107,16 @@ func main() {
 			}
 		}
 
+		nowOutFilePath:=outFilePath
 		if frames>1 {
-			inFilePath=fmt.Sprintf("%s%d%s",outFilePath,i,".png")
+			nowOutFilePath=fmt.Sprintf("%s%d%s",outFilePath,i,".png")
 		}
 
 
-		f, _ := os.Create(inFilePath)
+		f, _ := os.Create(nowOutFilePath)
 		png.Encode(f, simage)
 		fmt.Println("Finished Frame ", i)
+		fmt.Println("Saved at",nowOutFilePath)
 	}
 
 }
