@@ -1,111 +1,136 @@
 // TODO ADD reading scene from file
 //using stopwatch
 //2000x2000 sphere example no goroutines ~1:04 with 2 threads 36.15 4 threads 34.85   8 threads ~34.84
-//using time ./program
-//4000x4000 same scene   2 threads     4 threads
+//using time ./program   real
+//using computer for other things at this point
+//4000x4000 same scene   1 thread 5m02  threads 2m38  4 threads  2m39  8 threads 2m44
 package main
 
-import "fmt"
-import "sync"
-import "image"
-import "image/png"
-import "image/color"
-import "os"
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	"io/ioutil"
+	"log"
+	"os"
+	"strconv" //for sys.args  and file
+//	"strings"
+	"sync"
+)
 
 func main() {
-	frames:=1
 
-	WIDTH, HEIGHT := 4000, 4000
+	if len(os.Args) != 8 {
+
+		fmt.Println("Incorrect Arguments")
+		fmt.Println("raymarch width, height, FOV, 0-1 % of objects, # of threads, outfile, infile")
+		os.Exit(1)
+	}
+	args := os.Args[1:] //without program
+	WIDTH, _ := strconv.Atoi(args[0])
+	HEIGHT, _ := strconv.Atoi(args[1])
+	FOV, _ := strconv.Atoi(args[2])
+	threads, _ := strconv.Atoi(args[3])
+	RENDERAMT,_ :=strconv.ParseFloat(args[4],64) //multiply by length of objs = x then use first x for rendering 
+	outFilePath := args[5]
+	inFilePath := args[6]
+
 
 
 	fmt.Println("Starting...")
 
+	//get file pass to process()
+	//split by "FRAME"[1:]
+	//[][]arrayof all (cam,objects,lights) of length array split by frame
+	//then splitlines  then first line.Fields Atoi == numObjects,numLights
+	//this frame of bigger array = make([]Shapes,numObjects)
+
+	file, err := os.Open(inFilePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	fil, err := ioutil.ReadAll(file)
+
+	allObjects, allLights, allCams,frames := process(string(fil))
 
 
-	cam := Cam{Vec3{-10, 0, 0}, 0, 0}
 
-
-
-	threads := 2
-
-	fmt.Println("DONE=========================")
 
 	units := HEIGHT / threads
-	fmt.Println("barSize",units)
-
-
-
 	final := make([][]color.RGBA, HEIGHT)
 	for r := range final {
 		final[r] = make([]color.RGBA, WIDTH)
 	}
-for i:=0;i<frames;i++{
+	for i := 0; i < frames; i++ {
 
+		objects := allObjects[i]
+		lights := allLights[i]
+		cam:=allCams[i]
 
-	p := yPlane{-10, color.RGBA{0, 0, 255, 255}}
-	p2 := yPlane{10, color.RGBA{255, 0, 0, 255}}
-	p3 := xPlane{7, color.RGBA{0, 255, 0, 255}}
-	p6 := xPlane{-22, color.RGBA{255, 255, 0, 255}}
-	p4 := zPlane{-10, color.RGBA{255, 0, 255, 255}}
-	p5 := zPlane{10, color.RGBA{0, 255, 255, 255}}
+	//do this in main for less processing
+	//sort list of objects by dist
+	//take first 3/4 or something  or maybe  dist from place anywhere on y
+	//create slice
 
-	s:=Sphere{Vec3{1, -5-(float64(i)/-20), 0}, 2, color.RGBA{100, 100, 100,255}}
-
-	s1:=Sphere{Vec3{-18, -5-(float64(i)/-20), 0}, 2, color.RGBA{100, 100, 100,255}}
-
-
-	l1 := Light{Vec3{-6, -6, 4}, 1}
-	lights := []Light{l1} //for multiple lights combine em
-
-
-
-
-	objects := []Shape{p, p2, p3, p4, p5,p6, s,s1}
-
-	//,ulti threading yeehaw
-	output:=make([][][]color.RGBA,threads)
-	bar:=make([][]color.RGBA, units)
-	line:=make([]color.RGBA, WIDTH)
-	for j:= range bar{
-		bar[j]=line
-	}
-	for k:= range output{
-		output[k]=bar
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(threads) // we're going to wait for 1 person to finit
-
-	for i:=0; i<threads; i++{
-		start:=i*units
-		end:=start+units
-		fmt.Println(start,end)
-
-		go func(num int,WIDTH int , HEIGHT int , start int, end int , cam Cam, objects []Shape, lights []Light) {
-			output[num] = raymarch(WIDTH, HEIGHT, start, end, cam, objects, lights)
-			wg.Done()//avoid race condition i think
-
-		}(i,WIDTH, HEIGHT, start, end, cam, objects, lights)
-	}
-	wg.Wait() //when done all is finished-
-	final:=join(output, WIDTH,HEIGHT,units)
-	simage := image.NewRGBA(image.Rect(0, 0, WIDTH, HEIGHT))
-
-	//use join to combine list of sectioons to
-	//or use img.set in all of them plus the offsett    <---- This is prolly faster use code from join tho
-
-	//Writing to image
-	//join final from multithreading
-
-	for y := 0; y < HEIGHT; y++ {
-		for x := 0; x < WIDTH; x++ {
-			simage.Set(x, y, final[y][x])
+		dists := make([]float64, len(objects))
+		for i := range dists {
+			dists[i],_ = objects[i].DE(cam.pos)
 		}
-	}
+		sortedObjects:=sortDists(objects,dists)
+		objects=sortedObjects[:int(RENDERAMT*float64(len(objects)))]
 
-	f, _ := os.Create( fmt.Sprintf("%s%d%s","video/image",i,".png") )
-	png.Encode(f, simage)
-	fmt.Println("Finished Frame ",i)
-}
+
+		//multi threading yeehaw
+		output := make([][][]color.RGBA, threads)
+		bar := make([][]color.RGBA, units)
+		line := make([]color.RGBA, WIDTH)
+		for j := range bar {
+			bar[j] = line
+		}
+		for k := range output {
+			output[k] = bar
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(threads) // we're going to wait for 1 person to finit
+
+		for i := 0; i < threads; i++ {
+			start := i * units
+			end := start + units
+
+			go func(num int, WIDTH int, HEIGHT int, start int, end int, cam Cam, objects []Shape, lights []Light, FOV int, threadNum int) {
+				output[num] = raymarch(WIDTH, HEIGHT, start, end, cam, objects, lights, FOV, threadNum)
+				wg.Done() //avoid race condition i think
+				}(i, WIDTH, HEIGHT, start, end, cam, objects, lights, FOV, i)
+		}
+		wg.Wait() //when done all is finished-
+
+		simage := image.NewRGBA(image.Rect(0, 0, WIDTH, HEIGHT))
+
+		//join final from multithreading
+
+		for i, bar := range output {
+			for y, line := range bar {
+				ypos := y + (i * units)
+				for x, col := range line {
+					simage.Set(x, ypos, col)
+				}
+			}
+		}
+
+		nowOutFilePath:=outFilePath
+		if frames>1 {
+			nowOutFilePath=fmt.Sprintf("%s%d%s",outFilePath,i,".png")
+		}
+
+
+		f, _ := os.Create(nowOutFilePath)
+		png.Encode(f, simage)
+		fmt.Println("Finished Frame ", i)
+		fmt.Println("Saved at",nowOutFilePath)
+	}
 
 }
